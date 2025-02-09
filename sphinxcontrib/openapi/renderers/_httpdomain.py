@@ -203,6 +203,8 @@ class HttpdomainRenderer(abc.RestructuredTextRenderer):
         "response-example-preference": None,
         "generate-examples-from-schemas": directives.flag,
         "no-json-schema-description": directives.flag,
+        "include-paths": lambda s: s.split(),
+        "include-methods": lambda s: [m.lower() for m in s.split()],
     }
 
     def __init__(self, state, options):
@@ -242,8 +244,13 @@ class HttpdomainRenderer(abc.RestructuredTextRenderer):
 
     def render_paths(self, paths):
         """Render OAS paths item."""
-
+        include_paths = self._options.get("include-paths")
+        include_methods = self._options.get("include-methods")
+        
         for endpoint, path in paths.items():
+            if include_paths and endpoint not in include_paths:
+                continue
+            
             common_parameters = path.pop("parameters", [])
 
             # OpenAPI's path description may contain objects of different
@@ -254,6 +261,9 @@ class HttpdomainRenderer(abc.RestructuredTextRenderer):
                 path.pop(key, None)
 
             for method in _iterinorder(path, self._http_methods_order):
+                if include_methods and method not in include_methods:
+                    continue
+                     
                 operation = path[method]
                 operation.setdefault("parameters", [])
                 operation_parameters_ids = set(
